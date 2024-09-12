@@ -16,7 +16,7 @@ go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 ```
 
-### 建立 proto 檔案後產生相應的 pb.go 檔案
+### 編譯 proto 檔案後產生相應的 pb.go 檔案
 ```
 protoc --go_out=. --go-grpc_out=. ./proto/*.proto
 ```
@@ -42,4 +42,20 @@ go install github.com/fullstorydev/grpcurl/cmd/grpcurl
 使用(需重新啟動服務)
 ```
 grpcurl -plaintext -d '{"name":"Go"}' localhost:8001 proto.TagService.GetTagList
+```
+
+### 多協定服務(gRPC、SSH、HTTPS等)套件 & RESTful 轉 gRPC 請求
+用同一個通訊埠去支援多協定
+```
+go get -u github.com/soheilhy/cmux@v0.1.4
+```
+下載套件並移動
+```
+go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway@v1.14.5
+go install github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway@v1.14.5
+mv $GOPATH/bin/protoc-gen-grpc-gateway /usr/local/go/bin
+```
+import編譯
+```
+protoc -I$GOPATH -I. -I$GOPATH/pkg/mod -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v1.14.5/third_party/googleapis --grpc-gateway_out=logtostderr=true:. ./proto/*.proto
 ```
