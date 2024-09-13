@@ -59,3 +59,11 @@ import編譯
 ```
 protoc -I$GOPATH -I. -I$GOPATH/pkg/mod -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v1.14.5/third_party/googleapis --grpc-gateway_out=logtostderr=true:. ./proto/*.proto
 ```
+
+### gRPC 的 swagger 套件以及轉換套件
+由於暫時找不到如何轉換，因此文件介面略過
+```
+go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
+go get -u github.com/go-bindata/go-bindata/...
+// 利用 go-bindata 去做轉換，指令缺失
+```
