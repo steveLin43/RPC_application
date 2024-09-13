@@ -1,6 +1,7 @@
 package main
 
 import (
+	"RPC_application/internal/middleware"
 	"RPC_application/server"
 	"context"
 	"encoding/json"
@@ -11,6 +12,8 @@ import (
 	"strings"
 
 	pb "RPC_application/proto"
+
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"golang.org/x/net/http2"
@@ -60,12 +63,29 @@ func RunHttpServer() *http.ServeMux { //針對http1.0
 }
 
 func RunGrpcServer() *grpc.Server { //針對grpc
-	s := grpc.NewServer()
+	opts := []grpc.ServerOption{
+		//grpc.UnaryInterceptor(HelloInterceptor), //官方僅允許"設定"一個攔截器
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			middleware.AccessLog,
+			middleware.ErrorLog,
+			middleware.Recovery,
+		)),
+	}
+	s := grpc.NewServer(opts...)
 	pb.RegisterTagServiceServer(s, server.NewTagServer())
 	reflection.Register(s)
 
 	return s
 }
+
+/*
+func HelloInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	log.Println("hi")
+	resp, err := handler(ctx, req)
+	log.Println("bye")
+	return resp, err
+}
+*/
 
 func grpcHandleFunc(grpcServer *grpc.Server, otherHandle http.Handler) http.Handler {
 	return h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

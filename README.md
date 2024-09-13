@@ -26,11 +26,16 @@ protoc --go_out=. --go-grpc_out=. ./proto/*.proto
 go get -u google.golang.org/grpc
 ```
 
-### Rpc 種類
+### Rpc 相關介紹
+Rpc 種類
 Unary RPC: 一元RPC。會限制資料都接收成功且正確後才會進行下一步處理。
 Server-side  streaming RPC: 服務端流式RPC
 Client-side streaming RPC: 用戶端流式RPC
 Bidirectional streaming RPC: 雙向流式 RPC
+
+Rpc 攔截器種類
+Unary Interceptor: 一元攔截器，攔截和處理一元 RPC 呼叫
+Stream Interceptor: 流攔截器，攔截和處理流式 RPC 呼叫
 
 ### 用於驗證的 grpc 套件
 安裝
@@ -66,4 +71,9 @@ protoc -I$GOPATH -I. -I$GOPATH/pkg/mod -I$GOPATH/pkg/mod/github.com/grpc-ecosyst
 go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
 go get -u github.com/go-bindata/go-bindata/...
 // 利用 go-bindata 去做轉換，指令缺失
+```
+
+### gRPC 的多個攔截器套件
+```
+go get -u github.com/grpc-ecosystem/go-grpc-middleware@v1.1.0
 ```
