@@ -77,3 +77,9 @@ go get -u github.com/go-bindata/go-bindata/...
 ```
 go get -u github.com/grpc-ecosystem/go-grpc-middleware@v1.1.0
 ```
+
+### 安裝 jaeger 的套件，用於鏈路追蹤
+```
+go get -u github.com/opentracing/opentracing-go@v1.1.0
+go get -u github.com/uber/jaeger-client-go@v2.22.1
+```

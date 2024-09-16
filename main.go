@@ -20,8 +20,9 @@ import (
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/internal/status"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 )
 
 var port string
@@ -32,7 +33,27 @@ func init() {
 }
 
 func main() {
-	err := RunServer(port)
+	ctx := context.Background()
+	newCtx := metadata.AppendToOutgoingContext(ctx, "eddycjy", "Go语言编程之旅")
+	clientConn, err := GetClientConn(newCtx, "localhost:8004", []grpc.DialOption{grpc.WithUnaryInterceptor(
+		grpc_middleware.ChainUnaryClient(
+			middleware.UnaryContextTimeout(),
+			middleware.ClientTracing(),
+		),
+	)})
+	if err != nil {
+		log.Fatalf("err: %v", err)
+	}
+	defer clientConn.Close()
+
+	tagServiceClient := pb.NewTagServiceClient(clientConn)
+	resp, err := tagServiceClient.GetTagList(newCtx, &pb.GetTagListRequest{Name: "Go"})
+	if err != nil {
+		log.Fatalf("tagServiceClient.GetTagList err: %v", err)
+	}
+	log.Printf("resp: %v", resp)
+
+	err = RunServer(port)
 	if err != nil {
 		log.Fatalf("Run Server err: %v", err)
 	}
@@ -69,6 +90,7 @@ func RunGrpcServer() *grpc.Server { //針對grpc
 			middleware.AccessLog,
 			middleware.ErrorLog,
 			middleware.Recovery,
+			middleware.ServerTracing,
 		)),
 	}
 	s := grpc.NewServer(opts...)
@@ -130,4 +152,9 @@ func grpcGatewayError(ctx context.Context, _ *runtime.ServeMux, marshaler runtim
 	w.Header().Set("Content-type", marshaler.ContentType())
 	w.WriteHeader(runtime.HTTPStatusFromCode(s.Code()))
 	_, _ = w.Write(resp)
+}
+
+func GetClientConn(ctx context.Context, target string, opts []grpc.DialOption) (*grpc.ClientConn, error) {
+	opts = append(opts, grpc.WithInsecure())
+	return grpc.DialContext(ctx, target, opts...)
 }

@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
+
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 )
 
 const (
@@ -43,14 +47,39 @@ func (a *API) geyAccessToken(ctx context.Context) (string, error) {
 }
 
 func (a *API) httpGet(ctx context.Context, path string) ([]byte, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/%s", a.URL, path))
+	url := fmt.Sprintf("%s/%s", a.URL, path)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	span, newCtx := opentracing.StartSpanFromContext(
+		ctx, "HTTP GET:"+a.URL,
+		opentracing.Tag{Key: string(ext.Component), Value: "HTTP"},
+	)
+	span.SetTag("url", url)
+	_ = opentracing.GlobalTracer().Inject(
+		span.Context(),
+		opentracing.HTTPHeaders,
+		opentracing.HTTPHeadersCarrier(req.Header),
+	)
+
+	req = req.WithContext(newCtx)
+	client := http.Client{Timeout: time.Second * 60}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll((resp.Body))
-	return body, nil
+	defer span.Finish()
 
+	//讀取訊息主體，在實際封裝中可以將其抽離
+	body, err := ioutil.ReadAll((resp.Body))
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
 }
 
 func (a *API) GetTagList(ctx context.Context, name string) ([]byte, error) {
