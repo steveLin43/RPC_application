@@ -1,7 +1,11 @@
 package main
 
+// 服務器端
+
 import (
+	"RPC_application/global"
 	"RPC_application/internal/middleware"
+	"RPC_application/pkg/tracer"
 	"RPC_application/server"
 	"context"
 	"encoding/json"
@@ -20,7 +24,6 @@ import (
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 )
@@ -28,32 +31,26 @@ import (
 var port string
 
 func init() {
-	flag.StringVar(&port, "port", "8003", "啟動通訊埠編號")
+	flag.StringVar(&port, "port", "8004", "启动端口号")
 	flag.Parse()
+
+	err := setupTracer()
+	if err != nil {
+		log.Fatalf("init.setupTracer err: %v", err)
+	}
+}
+
+func setupTracer() error {
+	jaegerTracer, _, err := tracer.NewJaegerTracer("tour-service", "127.0.0.1:6831")
+	if err != nil {
+		return err
+	}
+	global.Tracer = jaegerTracer
+	return nil
 }
 
 func main() {
-	ctx := context.Background()
-	newCtx := metadata.AppendToOutgoingContext(ctx, "eddycjy", "Go语言编程之旅")
-	clientConn, err := GetClientConn(newCtx, "localhost:8004", []grpc.DialOption{grpc.WithUnaryInterceptor(
-		grpc_middleware.ChainUnaryClient(
-			middleware.UnaryContextTimeout(),
-			middleware.ClientTracing(),
-		),
-	)})
-	if err != nil {
-		log.Fatalf("err: %v", err)
-	}
-	defer clientConn.Close()
-
-	tagServiceClient := pb.NewTagServiceClient(clientConn)
-	resp, err := tagServiceClient.GetTagList(newCtx, &pb.GetTagListRequest{Name: "Go"})
-	if err != nil {
-		log.Fatalf("tagServiceClient.GetTagList err: %v", err)
-	}
-	log.Printf("resp: %v", resp)
-
-	err = RunServer(port)
+	err := RunServer(port)
 	if err != nil {
 		log.Fatalf("Run Server err: %v", err)
 	}
@@ -63,8 +60,8 @@ func RunServer(port string) error {
 	httpMux := RunHttpServer()
 	grpcS := RunGrpcServer()
 	gatewayMux := runGrpcGatewayServer()
-
 	httpMux.Handler("/", gatewayMux)
+
 	return http.ListenAndServe(":"+port, grpcHandleFunc(grpcS, httpMux))
 }
 
@@ -152,9 +149,4 @@ func grpcGatewayError(ctx context.Context, _ *runtime.ServeMux, marshaler runtim
 	w.Header().Set("Content-type", marshaler.ContentType())
 	w.WriteHeader(runtime.HTTPStatusFromCode(s.Code()))
 	_, _ = w.Write(resp)
-}
-
-func GetClientConn(ctx context.Context, target string, opts []grpc.DialOption) (*grpc.ClientConn, error) {
-	opts = append(opts, grpc.WithInsecure())
-	return grpc.DialContext(ctx, target, opts...)
 }
