@@ -83,3 +83,8 @@ go get -u github.com/grpc-ecosystem/go-grpc-middleware@v1.1.0
 go get -u github.com/opentracing/opentracing-go@v1.1.0
 go get -u github.com/uber/jaeger-client-go@v2.22.1
 ```
+
+### 安裝 etcd 的套件，用於服務註冊與負載平衡
+```
+go get -u github.com/coreos/etcd/clientv3@v3.3.18
+```

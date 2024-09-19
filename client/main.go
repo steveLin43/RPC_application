@@ -7,10 +7,14 @@ import (
 	"RPC_application/internal/middleware"
 	"RPC_application/pkg/tracer"
 	"context"
+	"fmt"
 	"log"
+	"time"
 
 	pb "RPC_application/proto"
 
+	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/clientv3/naming"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 
 	"google.golang.org/grpc"
@@ -46,8 +50,20 @@ func main() {
 	log.Printf("resp: %v", resp)
 }
 
-func GetClientConn(ctx context.Context, target string, opts []grpc.DialOption) (*grpc.ClientConn, error) {
-	opts = append(opts, grpc.WithInsecure())
+func GetClientConn(ctx context.Context, serviceName string, opts []grpc.DialOption) (*grpc.ClientConn, error) {
+	config := clientv3.Config{
+		Endpoints:   []string{"http://localhost:2379"},
+		DialTimeout: time.Second * 60,
+	}
+	cli, err := clientv3.New(config)
+	if err != nil {
+		return nil, err
+	}
+
+	r := &naming.GRPCResolver{Client: cli}
+	target := fmt.Sprintf("/etcdv3://RPC_application/grpc/%s", serviceName)
+	opts = append(opts, grpc.WithInsecure(), grpc.WithBalancer(grpc.RoundRobin(r)), grpc.WithBlock())
+
 	return grpc.DialContext(ctx, target, opts...)
 }
 

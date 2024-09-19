@@ -10,13 +10,17 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	pb "RPC_application/proto"
 
+	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/proxy/grpcproxy"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -49,6 +53,8 @@ func setupTracer() error {
 	return nil
 }
 
+const SERVICE_NAME = "tag-service"
+
 func main() {
 	err := RunServer(port)
 	if err != nil {
@@ -61,6 +67,18 @@ func RunServer(port string) error {
 	grpcS := RunGrpcServer()
 	gatewayMux := runGrpcGatewayServer()
 	httpMux.Handler("/", gatewayMux)
+
+	etcdClient, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{"http://localhost:2379"},
+		DialTimeout: time.Second * 60,
+	})
+	if err != nil {
+		return err
+	}
+	defer etcdClient.Close()
+
+	target := fmt.Sprintf("/etcdv3://RPC_application/grpc/%s", SERVICE_NAME)
+	grpcproxy.Register(etcdClient, target, ":"+port, 60)
 
 	return http.ListenAndServe(":"+port, grpcHandleFunc(grpcS, httpMux))
 }
