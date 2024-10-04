@@ -1,4 +1,5 @@
 # RPC_application
+參考資料：《用 Go 語言完成 6 個大型專案》第三章節 + https://github.com/go-programming-tour-book/tag-service
 
 ### 安裝 protoc
 參考安裝[網址](https://github.com/protocolbuffers/protobuf/releases/tag/v3.11.2)
